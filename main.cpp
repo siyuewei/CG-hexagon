@@ -4,9 +4,11 @@
 #include <GLFW/glfw3.h>
 #include "Shader.h"
 #include <vector>
+#include <chrono>
+
 const unsigned int SCR_WIDTH = 600;
 const unsigned int SCR_HEIGHT = 600;
-bool drawPointLine = false;
+
 
 struct point
 {
@@ -23,12 +25,20 @@ struct point
 struct RGBAColor {
 	float r, g, b, a;
 };
-
+RGBAColor baseColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // 红色
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 std::vector<point> generateVertexData();
 std::vector<RGBAColor> generateColors(const RGBAColor& baseColor, int numColors);
 float* generateFColors(const RGBAColor& baseColor, int numColors);
+RGBAColor interpolateColors(const RGBAColor& color1, const RGBAColor& color2, float t);
+float deltaTime();
+
+bool isDrawPointLine = false;
+bool isColorChanging = false;
+RGBAColor targetColor; // 保存目标颜色
+float durationInSeconds = 10000.0f; // 渐变的总时长
+float elapsedTime = 0.0f; // 已经过去的时间
 
 int main() {
 	//1.initial
@@ -80,10 +90,7 @@ int main() {
 	unsigned int colorIndices[] = {
 		1,3,5,2,5,3,6,4,6,2
 	};
-	RGBAColor baseColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // 红色
-	float* colors = generateFColors(baseColor, 6);
-	triangleShader.use();
-	triangleShader.setFloat4Array("colors", 6, colors);
+
 
 	unsigned VAO[10], VBO[10];
 	glGenBuffers(10, VBO);
@@ -125,11 +132,34 @@ int main() {
 		delete[]data;
 	}
 
+
+
 	while (!glfwWindowShouldClose(window)) {
 		processInput(window);
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		if (isColorChanging)
+		{
+			// 计算当前时间下的插值颜色
+			float t = elapsedTime / durationInSeconds;
+			baseColor = interpolateColors(baseColor, targetColor, t);
+
+			// 更新时间
+			elapsedTime += deltaTime(); // deltaTime()函数返回上一帧到当前帧的时间间隔
+
+			// 如果渐变完成，设置标志为false
+			if (elapsedTime >= durationInSeconds)
+			{
+				isColorChanging = false;
+				elapsedTime = 0.0f;
+			}
+		}
+
+		float* colors = generateFColors(baseColor, 6);
+		triangleShader.use();
+		triangleShader.setFloat4Array("colors", 6, colors);
 
 		//六边形
 		triangleShader.use();
@@ -138,7 +168,7 @@ int main() {
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 		}
 
-		if (drawPointLine) {
+		if (isDrawPointLine) {
 			//点
 			pointShader.use();
 			glEnable(GL_PROGRAM_POINT_SIZE);
@@ -177,17 +207,20 @@ void processInput(GLFWwindow* window)
 		glfwSetWindowShouldClose(window, true);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		drawPointLine = true;
+		isDrawPointLine = true;
 	}
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-		drawPointLine = false;
+		isDrawPointLine = false;
+	}
+	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
+		isColorChanging = true;
+		targetColor = RGBAColor{ 0.0f, 0.0f, 1.0f, 1.0f };
+		elapsedTime = 0.0f;
 	}
 }
 
 std::vector<point> generateVertexData() {
 	float oneOverSqrt3 = 0.57735f;
-
-
 	std::vector<point> finalVertex;
 
 	unsigned int minEdge;
@@ -265,8 +298,26 @@ float* generateFColors(const RGBAColor& baseColor, int numColors)
 		fcolors[4 * i + 2] = baseColor.b * (1.0f - i * 0.1f); // 减小蓝色通道
 		fcolors[4 * i + 3] = baseColor.a;
 	}
-
-
-
 	return fcolors;
+}
+
+
+
+RGBAColor interpolateColors(const RGBAColor& color1, const RGBAColor& color2, float t)
+{
+	RGBAColor result;
+	result.r = (1.0f - t) * color1.r + t * color2.r;
+	result.g = (1.0f - t) * color1.g + t * color2.g;
+	result.b = (1.0f - t) * color1.b + t * color2.b;
+	result.a = (1.0f - t) * color1.a + t * color2.a;
+	return result;
+}
+
+float deltaTime()
+{
+	static auto previousTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<float> deltaTime = currentTime - previousTime;
+	previousTime = currentTime;
+	return deltaTime.count();
 }

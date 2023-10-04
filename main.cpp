@@ -6,6 +6,7 @@
 #include <vector>
 const unsigned int SCR_WIDTH = 600;
 const unsigned int SCR_HEIGHT = 600;
+bool drawPointLine = false;
 
 struct point
 {
@@ -27,6 +28,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 std::vector<point> generateVertexData();
 std::vector<RGBAColor> generateColors(const RGBAColor& baseColor, int numColors);
+float* generateFColors(const RGBAColor& baseColor, int numColors);
 
 int main() {
 	//1.initial
@@ -79,40 +81,59 @@ int main() {
 		1,3,5,2,5,3,6,4,6,2
 	};
 	RGBAColor baseColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // 红色
-	std::vector<RGBAColor> colors = generateColors(baseColor, 6);
+	//std::vector<RGBAColor> colors = generateColors(baseColor, 6);
+	float* colors = generateFColors(baseColor, 6);
+	for (int i = 0; i < 6; ++i) {
+		std::cout << "color[" << i << "]:(" << colors[4 * i] << "," << colors[4 * i + 1] << ","
+			<< colors[4 * i + 2] << "," << colors[4 * i + 3] << ")" << std::endl;
+	}
+
+	triangleShader.use();
+	triangleShader.setFloat4Array("colors", 6, colors);
+	// 获取uniform变量的位置
+	GLint colorsLocation = glGetUniformLocation(triangleShader.ID, "colors");
+	if (colorsLocation == -1) {
+		std::cerr << "Failed to get uniform location for 'colors'" << std::endl;
+		return -1;
+	}
+
+	// 获取uniform数组的值
+	float colorsArray[6][4];
+	glGetUniformfv(triangleShader.ID, colorsLocation, &colorsArray[0][0]);
+
+	// 打印数组的值
+	for (int i = 0; i < 6; i++) {
+		std::cout << "colors[" << i << "]: (" << colorsArray[i][0] << ", " << colorsArray[i][1] << ", "
+			<< colorsArray[i][2] << ", " << colorsArray[i][3] << ")" << std::endl;
+	}
+
 
 	unsigned VAO[10], VBO[10];
 	glGenBuffers(10, VBO);
 	glGenVertexArrays(10, VAO);
 	for (int i = 0; i < 10; ++i) {
-		float* data = new float[3 * 6];
+		float* data = new float[3 * 4];
 		point p1 = vertexData[placeIndices[i * 3] - 1];
 		point p2 = vertexData[placeIndices[i * 3 + 1] - 1];
 		point p3 = vertexData[placeIndices[i * 3 + 2] - 1];
-		RGBAColor color = colors[colorIndices[i] - 1];
+		float colorPosition = colorIndices[i] - 1;
 		// 第一个顶点的数据
 		data[0] = p1.x;
 		data[1] = p1.y;
 		data[2] = 0.0f;
-		data[3] = color.r;
-		data[4] = color.g;
-		data[5] = color.b;
+		data[3] = colorPosition;
 
 		// 第二个顶点的数据
-		data[6] = p2.x;
-		data[7] = p2.y;
-		data[8] = 0.0f;
-		data[9] = color.r;
-		data[10] = color.g;
-		data[11] = color.b;
+		data[4] = p2.x;
+		data[5] = p2.y;
+		data[6] = 0.0f;
+		data[7] = colorPosition;
 
 		// 第三个顶点的数据
-		data[12] = p3.x;
-		data[13] = p3.y;
-		data[14] = 0.0f;
-		data[15] = color.r;  
-		data[16] = color.g; 
-		data[17] = color.b; 
+		data[8] = p3.x;
+		data[9] = p3.y;
+		data[10] = 0.0f;
+		data[11] = colorPosition;
 
 		//for (int j = 0; j <= 11; ++j) {
 		//	std::cout << data[j] << " ";
@@ -120,9 +141,9 @@ int main() {
 		//std::cout << std::endl;
 		glBindVertexArray(VAO[i]);
 		glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
-		glBufferData(GL_ARRAY_BUFFER, 3*6*sizeof(float), data, GL_STATIC_DRAW);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+		glBufferData(GL_ARRAY_BUFFER, 3*4*sizeof(float), data, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+		glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 
@@ -144,21 +165,23 @@ int main() {
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 		}
 
-		//点
-		pointShader.use();
-		glEnable(GL_PROGRAM_POINT_SIZE);
-		for (int i = 0; i < 10; ++i) {
-			glBindVertexArray(VAO[i]);
-			glDrawArrays(GL_POINTS, 0, 3);
-		}
-		// 禁用点精灵功能并切换到下一个着色器程序
-		glDisable(GL_PROGRAM_POINT_SIZE);
+		if (drawPointLine) {
+			//点
+			pointShader.use();
+			glEnable(GL_PROGRAM_POINT_SIZE);
+			for (int i = 0; i < 10; ++i) {
+				glBindVertexArray(VAO[i]);
+				glDrawArrays(GL_POINTS, 0, 3);
+			}
+			// 禁用点精灵功能并切换到下一个着色器程序
+			glDisable(GL_PROGRAM_POINT_SIZE);
 
-		// 线
-		lineShader.use();
-		for (int i = 0; i < 10; ++i) {
-			glBindVertexArray(VAO[i]);
-			glDrawArrays(GL_LINE_LOOP, 0, 3);
+			// 线
+			lineShader.use();
+			for (int i = 0; i < 10; ++i) {
+				glBindVertexArray(VAO[i]);
+				glDrawArrays(GL_LINE_LOOP, 0, 3);
+			}
 		}
 
 		glfwSwapBuffers(window);
@@ -179,6 +202,12 @@ void processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+		drawPointLine = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+		drawPointLine = false;
 	}
 }
 
@@ -237,18 +266,6 @@ std::vector<point> generateVertexData() {
 }
 
 std::vector<RGBAColor>  generateColors(const RGBAColor& baseColor, int numColors) {
-
-	//float* fcolors = new float[numColors*4];
-
-	//for (int i = 0; i < numColors; ++i) {
-	//	fcolors[4 * i] = baseColor.r * (1.0f - i * 0.1f); // 减小红色通道
-	//	fcolors[4 * i + 1] = baseColor.g * (1.0f - i * 0.1f); // 减小绿色通道
-	//	fcolors[4 * i + 2] = baseColor.b * (1.0f - i * 0.1f); // 减小蓝色通道
-	//	fcolors[4 * i + 3] = baseColor.a;
-	//}
-
-	//return fcolors;
-
 	std::vector<RGBAColor> colors;
 	colors.push_back(baseColor);
 
@@ -263,4 +280,20 @@ std::vector<RGBAColor>  generateColors(const RGBAColor& baseColor, int numColors
 	}
 
 	return colors;
+}
+
+float* generateFColors(const RGBAColor& baseColor, int numColors)
+{
+	float* fcolors = new float[numColors*4];
+
+	for (int i = 0; i < numColors; ++i) {
+		fcolors[4 * i] = baseColor.r * (1.0f - i * 0.1f); // 减小红色通道
+		fcolors[4 * i + 1] = baseColor.g * (1.0f - i * 0.1f); // 减小绿色通道
+		fcolors[4 * i + 2] = baseColor.b * (1.0f - i * 0.1f); // 减小蓝色通道
+		fcolors[4 * i + 3] = baseColor.a;
+	}
+
+
+
+	return fcolors;
 }

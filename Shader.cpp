@@ -86,6 +86,11 @@ void Shader::setFloat4Array(const std::string& name, unsigned count, float* valu
     GLint location = glGetUniformLocation(ID, name.c_str());
     if (location != -1) {
         glUniform4fv(location, count, value);
+        std::cout << "Shader " << std::endl;
+        for (int i = 0; i < 6; ++i) {
+            std::cout << "color[" << i << "]:(" << value[4 * i] << "," << value[4 * i + 1] << ","
+                << value[4 * i + 2] << "," << value[4 * i + 3] << ")" << std::endl;
+        }
     }
 }
 

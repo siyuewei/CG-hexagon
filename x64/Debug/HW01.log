@@ -1,2 +1,4 @@
 ﻿  main.cpp
+E:\vs\HW01\main.cpp(119,23): warning C4244: “初始化”: 从“unsigned int”转换到“float”，可能丢失数据
+LINK : warning LNK4098: 默认库“MSVCRT”与其他库的使用冲突；请使用 /NODEFAULTLIB:library
   HW01.vcxproj -> E:\vs\HW01\x64\Debug\HW01.exe

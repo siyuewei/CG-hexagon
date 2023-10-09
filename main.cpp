@@ -5,6 +5,7 @@
 #include "Shader.h"
 #include <vector>
 #include <chrono>
+#include <random>
 
 const unsigned int SCR_WIDTH = 600;
 const unsigned int SCR_HEIGHT = 600;
@@ -33,9 +34,13 @@ std::vector<RGBAColor> generateColors(const RGBAColor& baseColor, int numColors)
 float* generateFColors(const RGBAColor& baseColor, int numColors);
 RGBAColor interpolateColors(const RGBAColor& color1, const RGBAColor& color2, float t);
 float deltaTime();
+float* generateFPointSize();
+float* generateFBrightness();
+
 
 bool isDrawPointLine = false;
 bool isColorChanging = false;
+bool changeColorBright = false;
 RGBAColor targetColor; // 保存目标颜色
 float durationInSeconds = 10000.0f; // 渐变的总时长
 float elapsedTime = 0.0f; // 已经过去的时间
@@ -91,7 +96,7 @@ int main() {
 		1,3,5,2,5,3,6,4,6,2
 	};
 
-
+	//三角形三个顶点一组存在VBO里面
 	unsigned VAO[10], VBO[10];
 	glGenBuffers(10, VBO);
 	glGenVertexArrays(10, VAO);
@@ -132,6 +137,30 @@ int main() {
 		delete[]data;
 	}
 
+	//十个顶点存在VBO里面
+	unsigned VAO_point, VBO_point;
+	glGenBuffers(1, &VBO_point);
+	glGenVertexArrays(1, &VAO_point);
+	float point_data[] = {
+		vertexData[0].x,vertexData[0].y,0.0f,0,
+		vertexData[1].x,vertexData[1].y,0.0f,1,
+		vertexData[2].x,vertexData[2].y,0.0f,2,
+		vertexData[3].x,vertexData[3].y,0.0f,3,
+		vertexData[4].x,vertexData[4].y,0.0f,4,
+		vertexData[5].x,vertexData[5].y,0.0f,5,
+		vertexData[6].x,vertexData[6].y,0.0f,6,
+		vertexData[7].x,vertexData[7].y,0.0f,7,
+		vertexData[8].x,vertexData[8].y,0.0f,8,
+	};
+	glBindVertexArray(VAO_point);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO_point);
+	glBufferData(GL_ARRAY_BUFFER, 4 * 10 * sizeof(float), point_data, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 
 
 	while (!glfwWindowShouldClose(window)) {
@@ -171,11 +200,16 @@ int main() {
 		if (isDrawPointLine) {
 			//点
 			pointShader.use();
+			//生成随机点大小数组
 			glEnable(GL_PROGRAM_POINT_SIZE);
-			for (int i = 0; i < 10; ++i) {
-				glBindVertexArray(VAO[i]);
-				glDrawArrays(GL_POINTS, 0, 3);
+			float *point_size_array = generateFPointSize();
+			pointShader.setFloat1Array("pointSizeArray", 9, point_size_array);
+			if (changeColorBright) {
+				float* brightness_array = generateFBrightness();
+				pointShader.setFloat1Array("brightnessArray", 9, brightness_array);
 			}
+			glBindVertexArray(VAO_point);
+			glDrawArrays(GL_POINTS, 0, 9);
 			// 禁用点精灵功能并切换到下一个着色器程序
 			glDisable(GL_PROGRAM_POINT_SIZE);
 
@@ -211,11 +245,18 @@ void processInput(GLFWwindow* window)
 	}
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
 		isDrawPointLine = false;
+		changeColorBright = false;
+		isColorChanging = false;
 	}
 	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
 		isColorChanging = true;
 		targetColor = RGBAColor{ 0.0f, 0.0f, 1.0f, 1.0f };
 		elapsedTime = 0.0f;
+	}
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) {
+		if (isDrawPointLine) {
+			changeColorBright = true;
+		}
 	}
 }
 
@@ -321,3 +362,76 @@ float deltaTime()
 	previousTime = currentTime;
 	return deltaTime.count();
 }
+
+float* generateFPointSize()
+{
+	static float pointSizeArray[9] = { 0.0f };
+	static float pointSizeMin[9] = { 0.0f };
+	static float pointSizeMax[9] = { 0.0f };
+	static float transitionStep[9] = { 0.0f }; // 用于控制每个点的变化速度
+	static bool initialized = false;
+	float margin = 10.0f;
+
+	if (!initialized) {
+		int min = 10, max = 20;
+		std::random_device seed;
+		std::ranlux48 engine(seed());
+		std::uniform_int_distribution<> distrib(min, max);
+
+		for (int i = 0; i < 9; i++) {
+			pointSizeArray[i] = float(distrib(engine));
+			pointSizeMin[i] = pointSizeArray[i] - margin;
+			pointSizeMax[i] = pointSizeArray[i] + margin;
+			transitionStep[i] = 0.01f; // 初始化每个点的变化速度
+		}
+
+		initialized = true;
+	}
+	else {
+		for (int i = 0; i < 9; i++) {
+			// 逐渐改变点大小
+			pointSizeArray[i] += transitionStep[i];
+
+			// 确保点大小在范围内，并反向变化
+			if (pointSizeArray[i] > pointSizeMax[i] || pointSizeArray[i] < pointSizeMin[i]) {
+				transitionStep[i] = -transitionStep[i];
+			}
+		}
+	}
+
+	return pointSizeArray;
+}
+
+float* generateFBrightness()
+{
+	static float brightnessArray[9] = { 0.0f };
+	static float transitionStep[9] = { 0.0f }; // 用于控制每个点的变化速度
+	static bool initialized = false;
+
+	if (!initialized) {
+		std::random_device seed;
+		std::ranlux48 engine(seed());
+		std::uniform_real_distribution<float> distrib(0.0f, 1.0f); // 使用 uniform_real_distribution 来生成 0 到 1 之间的随机数
+
+		for (int i = 0; i < 9; i++) {
+			brightnessArray[i] = distrib(engine);
+			transitionStep[i] = 0.01f; // 初始化每个点的变化速度
+		}
+
+		initialized = true;
+	}
+	else {
+		for (int i = 0; i < 9; i++) {
+			// 逐渐改变亮度
+			brightnessArray[i] += transitionStep[i];
+
+			// 确保亮度在范围内，并反向变化
+			if (brightnessArray[i] > 1.0f || brightnessArray[i] < 0.0f) {
+				transitionStep[i] = -transitionStep[i];
+			}
+		}
+	}
+
+	return brightnessArray;
+}
+

@@ -81,6 +81,14 @@ void Shader::setFloat(const std::string& name, float value) const
     }
 }
 
+void Shader::setFloat1Array(const std::string& name, unsigned count, float* value) const
+{
+    GLint location = glGetUniformLocation(ID, name.c_str());
+    if (location != -1) {
+        glUniform1fv(location, count, value);
+    }
+}
+
 void Shader::setFloat4Array(const std::string& name, unsigned count, float* value) const
 {
     GLint location = glGetUniformLocation(ID, name.c_str());

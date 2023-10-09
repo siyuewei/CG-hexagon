@@ -21,6 +21,7 @@ public:
     void setBool(const std::string& name, bool value) const;
     void setInt(const std::string& name, int value) const;
     void setFloat(const std::string& name, float value) const;
+    void setFloat1Array(const std::string& name, unsigned count,float* value) const;
     void setFloat4Array(const std::string& name, unsigned count,float *value) const;
 
 private:

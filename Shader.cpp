@@ -97,6 +97,14 @@ void Shader::setFloat4Array(const std::string& name, unsigned count, float* valu
     }
 }
 
+void Shader::setMatrix4fv(const std::string& name, unsigned count, glm::mat4 value) const
+{
+    GLint location = glGetUniformLocation(ID, name.c_str());
+    if (location != -1) {
+        glUniformMatrix4fv(location, count, GL_FALSE, glm::value_ptr(value));
+    }
+}
+
 void Shader::checkCompileErrors(unsigned int shader, std::string type)
 {
     int success;

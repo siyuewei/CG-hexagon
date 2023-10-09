@@ -42,5 +42,7 @@
     <None Include="triangle.fs" />
     <None Include="point.vs" />
     <None Include="point.fs" />
+    <None Include="move_point.vs" />
+    <None Include="move_point.fs" />
   </ItemGroup>
 </Project>

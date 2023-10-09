@@ -8,6 +8,10 @@
 #include <sstream>
 #include <iostream>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 class Shader
 {
 public:
@@ -23,6 +27,7 @@ public:
     void setFloat(const std::string& name, float value) const;
     void setFloat1Array(const std::string& name, unsigned count,float* value) const;
     void setFloat4Array(const std::string& name, unsigned count,float *value) const;
+    void setMatrix4fv(const std::string& name, unsigned count, glm::mat4 value) const;
 
 private:
     // utility function for checking shader compilation/linking errors.

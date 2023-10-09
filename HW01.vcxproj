@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\vs\OpenLibraries\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\vs\OpenLibraries\include;D:\vs\OpenLibraries\include\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,6 +143,8 @@
     <None Include="hw01.vs" />
     <None Include="line.fs" />
     <None Include="line.vs" />
+    <None Include="move_point.fs" />
+    <None Include="move_point.vs" />
     <None Include="point.fs" />
     <None Include="point.vs" />
     <None Include="triangle.fs" />
